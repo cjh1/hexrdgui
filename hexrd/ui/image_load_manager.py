@@ -4,6 +4,7 @@ import multiprocessing
 import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from hexrd import imageseries
 
@@ -204,27 +205,15 @@ class ImageLoadManager(QObject, metaclass=Singleton):
         else:
             agg_func = imageseries.stats.average_iter
 
-        # If this is False, multiprocess is used instead
-        multithread = True
-        if multithread:
-            result_dict = {}
-            progress_dict = {key: 0.0 for key in ims_dict.keys()}
-        else:
-            manager = multiprocessing.Manager()
-            result_dict = manager.dict()
-            progress_dict = manager.dict({key: 0.0 for key in ims_dict.keys()})
-
+        progress_dict = {key: 0.0 for key in ims_dict.keys()}
         f = functools.partial(aggregate_images, agg_func=agg_func,
-                              result_dict=result_dict,
                               progress_dict=progress_dict)
 
-        if multithread:
-            aggregate_multithread(f, ims_dict)
-        else:
-            aggregate_multiprocess(f, ims_dict, result_dict)
+        print(list(ims_dict.values()))
 
-        for key in ims_dict.keys():
-            ims_dict[key] = result_dict[key]
+        for (key, aggr_img) in zip(ims_dict.keys(), aggregate_multithread(f, ims_dict)):
+            print(aggr_img)
+            ims_dict[key] = aggr_img
 
         end = time.time()
         print('Time to aggregate images was:', end - start)
@@ -347,7 +336,7 @@ class ImageLoadManager(QObject, metaclass=Singleton):
             self.progress_dialog.setLabelText(text)
 
 
-def aggregate_images(key, ims, agg_func, result_dict, progress_dict):
+def aggregate_images(key, ims, agg_func, progress_dict):
     print(key, 'is starting')
     frames = len(ims)
     num_ims = len(progress_dict)
@@ -361,18 +350,15 @@ def aggregate_images(key, ims, agg_func, result_dict, progress_dict):
     for i, img in enumerate(agg_func(ims, nchunk)):
         progress_dict[key] = (i + 1) / nchunk
 
-    result_dict[key] = [img]
+    return img
     print(key, 'is finished')
 
 
 def aggregate_multithread(f, ims_dict):
-    threads = []
-    for key, ims in ims_dict.items():
-        t = threading.Thread(target=f, args=(key, ims))
-        t.start()
-        threads.append(t)
+    args = [(key, ims) for (key, ims) in ims_dict.items()]
+    with ThreadPoolExecutor() as tp:
+        return [img for img in tp.map(lambda p: f(*p), args)]
 
-    [t.join() for t in threads]
 
 
 def aggregate_multiprocess(f, ims_dict, result_dict):
