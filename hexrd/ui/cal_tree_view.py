@@ -3,6 +3,7 @@ from PySide2.QtWidgets import (
     QCheckBox, QMenu, QMessageBox, QStyledItemDelegate, QTreeView
 )
 from PySide2.QtGui import QCursor
+import numpy as np
 
 from hexrd.ui.hexrd_config import HexrdConfig
 from hexrd.ui.tree_views.base_tree_item_model import BaseTreeItemModel
@@ -83,8 +84,13 @@ class CalTreeItemModel(BaseTreeItemModel):
         flags = super(CalTreeItemModel, self).flags(index)
 
         item = self.get_item(index)
-        if ((index.column() == VALUE_COL and item.child_count() == 0) or
-                index.column() == STATUS_COL):
+        editable = ((index.column() == VALUE_COL and item.child_count() == 0) or
+                index.column() == STATUS_COL)
+
+        # Disable editing for np.ndarray
+        #editable = editable and not isinstance(item.data(index.column()), np.ndarray)
+
+        if editable:
             # The second and third columns with no children are editable
             flags = flags | Qt.ItemIsEditable
 
