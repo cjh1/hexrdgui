@@ -48,14 +48,12 @@ class PanelBufferDialog(QObject):
         self.ui.show()
 
     def on_accepted(self):
-        # Validate
         if self.mode == CONFIG_MODE_NUMPY and self.file_name == '':
             msg = 'Please select a NumPy array file'
             QMessageBox.critical(self.ui, 'HEXRD', msg)
             self.show()
             return
 
-        # Save the selected options on the config
         self.update_config()
 
         self.accepted.emit()

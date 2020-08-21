@@ -14,45 +14,25 @@ from hexrd.ui.scientificspinbox import ScientificDoubleSpinBox
 from hexrd.ui.hexrd_config import HexrdConfig
 from hexrd.ui.calibration.panel_buffer_dialog import PanelBufferDialog
 from hexrd.ui.tree_views.base_tree_item_model import BaseTreeItemModel
+from hexrd.ui import constants
 
 BUTTON_LABEL = 'Configure Panel Buffer'
-BUFFER_KEY = 'buffer'
 
 class ValueColumnDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.btn = QPushButton(BUTTON_LABEL)
-
-        def _entered(index):
-            item = parent.model().get_item(index)
-            key = item.data(BaseTreeItemModel.KEY_COL)
-            if key == BUFFER_KEY:
-                parent.openPersistentEditor(index)
-
-        parent.setMouseTracking(True)
-        parent.entered.connect(_entered)
 
         editor_factory = ValueColumnEditorFactory(parent)
         self.setItemEditorFactory(editor_factory)
-
-    def paint(self, painter, option, index):
-        item = self.parent().model().get_item(index)
-        key = item.data(BaseTreeItemModel.KEY_COL)
-        if key == BUFFER_KEY:
-            self.btn.setGeometry(option.rect)
-
-            pixmap = QWidget.grab(self.btn)
-            painter.drawPixmap(option.rect.x(),option.rect.y(), pixmap)
-        else:
-            super(ValueColumnDelegate, self).paint(painter, option, index)
 
     def createEditor(self, parent, option, index):
         model = self.parent().model()
         item = model.get_item(index)
         key = item.data(BaseTreeItemModel.KEY_COL)
-        if key == BUFFER_KEY:
+        if key == constants.BUFFER_KEY:
             edit_btn = QPushButton(BUTTON_LABEL, parent)
             def _clicked():
+                # Extract out the detector, so we can update the right config
                 path = model.get_path_from_root(item, index.column())
                 detector = path[path.index('detectors') + 1]
                 dialog = PanelBufferDialog(detector, self)
